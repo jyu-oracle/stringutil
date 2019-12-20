@@ -80,7 +80,7 @@ func TestParseValues(t *testing.T) {
 	}
 }
 
-func TestParseData(t *testing.T) {
+func TestParseComplexData(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -101,7 +101,7 @@ func TestParseData(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := ParseData(c.line, c.prefix, strings.Fields(c.fields))
+		r := ParseComplexData(c.line, c.prefix, strings.Fields(c.fields))
 		if debug {
 			fmt.Println(r)
 		}

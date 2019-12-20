@@ -100,10 +100,10 @@ func ParseValues(line string, prefix string, fields []string) map[string]string 
 	return retMap
 }
 
-// ParseData returns key-value pairs and values parsed from the input string.
+// ParseComplexData returns key-value pairs and values parsed from the input string.
 // fields param is used to supply additional information for keys. If specify "_" string for fields, the default key value (key value parsed from input or #idx) will be used. Otherwise the specified field value will override the default key value.
 // Expected input pattern : ( { key  [=|:] }  ( "value" | value ) )
-func ParseData(line string, prefix string, fields []string) map[string]string {
+func ParseComplexData(line string, prefix string, fields []string) map[string]string {
 	if prefix != "" {
 		idx := strings.Index(line, prefix)
 		if idx == -1 {
