@@ -19,7 +19,7 @@ func stripDoubleQuote(str string) string {
 }
 
 // ParseKeyValuePairs returns key-value pairs directly parsed from the input string.
-// Expected input pattern : key  [=|:]  ( "value" | value )
+// Expected input pattern : ( key  [=|:] value )
 func ParseKeyValuePairs(line string, prefix string) map[string]string {
 	if prefix != "" {
 		idx := strings.Index(line, prefix)
@@ -34,17 +34,23 @@ func ParseKeyValuePairs(line string, prefix string) map[string]string {
 	retMap := make(map[string]string)
 
 	/*
-		key  [=|:]  ( "value" | value )
-		([^\s]+) \s* [=|:] \s* ( ("[^"]+") | ([^\s,]+) )
+		( key [=|:] value )
+			value format : value, "value", (value)
 
-		\s             whitespace (== [\t\n\f\r ])
-		"[^"]+"        double quoted string
-		[^\s,]+        string not containing whitespace and ',' character
+		([^\s]+) \s* [=|:] \s* ("[^"]+" | \([^\)]+\) | [^\s,]+ )
 	*/
-	rex := regexp.MustCompile(`([^\s]+)\s*[=|:]\s*(("[^"]+")|([^\s,]+))`)
+	rex := regexp.MustCompile(`([^\s]+)\s*[=|:]\s*("[^"]+"|\([^\)]+\)|[^\s,]+)`)
 	data := rex.FindAllStringSubmatch(line, -1)
 
 	for _, v := range data {
+		if len(v) != 3 {
+			return nil
+		}
+		/*
+			v[0] : match of the entire expression (key=value)
+			v[1] : match of the 1st parenthesized subexpr (key)
+			v[2] : match of the 2nd parenthesized subexpr (value)
+		*/
 		key := v[1]
 		value := stripDoubleQuote(v[2])
 		retMap[key] = value
@@ -59,7 +65,7 @@ func ParseKeyValuePairs(line string, prefix string) map[string]string {
 // Keys are explicitly provided as fields param, and values are parsed from the input string.
 // If specify "_" string for fields, the default key value ("#" + index) will be used. Otherwise the specified field value will be used as key.
 // For the case of value which doesn't have matching key, the default key("#" + index) is used.
-// Expected input pattern : ( "value" | value )
+// Expected input pattern : ( value )
 func ParseValues(line string, prefix string, fields []string) map[string]string {
 	if prefix != "" {
 		idx := strings.Index(line, prefix)
@@ -74,17 +80,18 @@ func ParseValues(line string, prefix string, fields []string) map[string]string 
 	retMap := make(map[string]string)
 
 	/*
-		( "value" | value )
-		( ("[^"]+") | ([^\s,]+) )
+		( value )
+			value format : value, "value", (value)
 
-		\s             whitespace (== [\t\n\f\r ])
-		"[^"]+"        double quoted string
-		[^\s,]+        string not containing whitespace and ',' character
+		("[^"]+" | \([^\)]+\) | [^\s,]+)
 	*/
-	rex := regexp.MustCompile(`(("[^"]+")|([^\s,]+))`)
+	rex := regexp.MustCompile(`("[^"]+"|\([^\)]+\)|[^\s,]+)`)
 	data := rex.FindAllStringSubmatch(line, -1)
 
 	for i, v := range data {
+		if len(v) != 2 {
+			return nil
+		}
 		var key string
 		if i < len(fields) && fields[i] != "_" {
 			key = fields[i]
@@ -102,7 +109,7 @@ func ParseValues(line string, prefix string, fields []string) map[string]string 
 
 // ParseComplexData returns key-value pairs and values parsed from the input string.
 // fields param is used to supply additional information for keys. If specify "_" string for fields, the default key value (key value parsed from input or #idx) will be used. Otherwise the specified field value will override the default key value.
-// Expected input pattern : ( { key  [=|:] }  ( "value" | value ) )
+// Expected input pattern : ( key  [=|:] value ) | ( value )
 func ParseComplexData(line string, prefix string, fields []string) map[string]string {
 	if prefix != "" {
 		idx := strings.Index(line, prefix)
@@ -116,37 +123,48 @@ func ParseComplexData(line string, prefix string, fields []string) map[string]st
 	}
 	retMap := make(map[string]string)
 
-	rex1 := regexp.MustCompile(`([^\s]+)`)
-	rex2 := regexp.MustCompile(`([^\s]+)[=|:](("[^"]+")|([^\s,]+))`)
-	data1 := rex1.FindAllStringSubmatch(line, -1)
+	/*
+		( key [=|:] value ) | ( value )
+			value format : value, "value", (value)
 
-	for i, v := range data1 {
-		var key string
-		value := stripDoubleQuote(v[1])
-		data2 := rex2.FindAllStringSubmatch(value, -1)
-		if len(data2) == 0 {
+		([^\s]+) \s* [=|:] \s* ("[^"]+" | \([^\)]+\) | [^\s,]+ )  |  ("[^"]+" | \([^\)]+\) | [^\s,]+)
+
+		\s             whitespace (== [\t\n\f\r ])
+		"[^"]+"        double quoted string
+		[^\s,]+        string not containing whitespace and ',' character
+	*/
+	rex := regexp.MustCompile(`([^\s]+)\s*[=|:]\s*("[^"]+"|\([^\)]+\)|[^\s,]+)|("[^"]+"|\([^\)]+\)|[^\s,]+)`)
+	data := rex.FindAllStringSubmatch(line, -1)
+
+	for i, v := range data {
+		/*
+			v[0] : match of the entire expression (key=value | valueonly)
+			v[1] : match of the 1st parenthesized subexpr (key)
+			v[2] : match of the 2nd parenthesized subexpr (value)
+			v[3] : match of the 3rd parenthesized subexpr (valueonly)
+		*/
+		if len(v) != 4 {
+			return nil
+		}
+		var key, value string
+		if v[1] == "" && v[2] == "" {
 			if i < len(fields) && fields[i] != "_" {
 				key = fields[i]
 			} else {
 				key = fmt.Sprintf("#%d", i+1)
 			}
-			retMap[key] = value
-			if debug {
-				fmt.Printf("[%v]->[%v]\n", key, value)
-			}
+			value = stripDoubleQuote(v[3])
 		} else {
-			for _, vv := range data2 {
-				if i < len(fields) && fields[i] != "_" {
-					key = fields[i]
-				} else {
-					key = vv[1]
-				}
-				value = stripDoubleQuote(vv[2])
-				retMap[key] = value
-				if debug {
-					fmt.Printf("* [%v]->[%v]\n", key, value)
-				}
+			if i < len(fields) && fields[i] != "_" {
+				key = fields[i]
+			} else {
+				key = v[1]
 			}
+			value = stripDoubleQuote(v[2])
+		}
+		retMap[key] = value
+		if debug {
+			fmt.Printf("[%v]->[%v]\n", key, value)
 		}
 	}
 	return retMap
