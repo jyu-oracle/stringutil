@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestParseKeyValuePairs(t *testing.T) {
+func TestGetParsedKeyValueMap(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -15,6 +15,8 @@ func TestParseKeyValuePairs(t *testing.T) {
 	}{
 		{"prefix key1=val1 key2=val2", "prefix", map[string]string{"key1": "val1", "key2": "val2"}},
 		{"prefix key1=val1, key2=val2", "prefix", map[string]string{"key1": "val1", "key2": "val2"}},
+		{"prefix key1=val1,, key2=val2", "prefix", map[string]string{"key1": "val1", "key2": "val2"}},
+		{`prefix key1=val1 ,,,, key2=val2`, "prefix", map[string]string{"key1": "val1", "key2": "val2"}},
 		{"prefix key1=(val1) key2=val2", "prefix", map[string]string{"key1": "(val1)", "key2": "val2"}},
 		{`prefix key1="val1" key2=val2`, "prefix", map[string]string{"key1": "val1", "key2": "val2"}},
 		{`prefix key1="(val1)" key2=val2`, "prefix", map[string]string{"key1": "(val1)", "key2": "val2"}},
@@ -43,17 +45,17 @@ func TestParseKeyValuePairs(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := ParseKeyValuePairs(c.line, c.prefix)
+		r := GetParsedKeyValueMap(c.line, c.prefix)
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.m, r) {
-			t.Errorf("ParseKeyValuePairs(%v,%v)=%v, want %v", c.line, c.prefix, r, c.m)
+			t.Errorf("GetParsedKeyValueMap(%v,%v)=%v, want %v", c.line, c.prefix, r, c.m)
 		}
 	}
 }
 
-func TestParseValues(t *testing.T) {
+func TestGetSlicedDataMap(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -62,6 +64,8 @@ func TestParseValues(t *testing.T) {
 	}{
 		{"prefix val1 val2", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "val2"}},
 		{"prefix val1, val2", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "val2"}},
+		{"prefix val1,, val2", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "val2"}},
+		{"prefix val1 ,,,, val2", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "val2"}},
 		{"prefix val1   ,   val2", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "val2"}},
 		{"prefix val1 val2 val3 val4", "prefix", "", map[string]string{"#1": "val1", "#2": "val2", "#3": "val3", "#4": "val4"}},
 		{"prefix val1 val2 val3 val4", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "val2", "#3": "val3", "#4": "val4"}},
@@ -78,20 +82,56 @@ func TestParseValues(t *testing.T) {
 		{"prefix val1 ()val2", "prefix", "key1 key2", map[string]string{"key1": "val1", "key2": "()val2"}},
 		{"prefix val1 () val2", "prefix", "key1 _ key2", map[string]string{"key1": "val1", "#2": "()", "key2": "val2"}},
 		{"prefix s1=val1 s2=val2", "prefix", "key1 key2", map[string]string{"key1": "s1=val1", "key2": "s2=val2"}},
+		{"prefix s1= val1 s2=val2", "prefix", "key0 key1 key2", map[string]string{"key0": "s1=", "key1": "val1", "key2": "s2=val2"}},
 	}
 
 	for _, c := range cases {
-		r := ParseValues(c.line, c.prefix, strings.Fields(c.fields))
+		r := GetSlicedDataMap(c.line, c.prefix, strings.Fields(c.fields))
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.m, r) {
-			t.Errorf("ParseValues(%v,%v,%v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
+			t.Errorf("GetSlicedDataMap(%v,%v,%v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
 		}
 	}
 }
 
-func TestParseComplexData(t *testing.T) {
+func TestGetSlicedDataArray(t *testing.T) {
+	cases := []struct {
+		line   string
+		prefix string
+		a      []string
+	}{
+		{"prefix val1 val2", "prefix", []string{"val1", "val2"}},
+		{"prefix val1, val2", "prefix", []string{"val1", "val2"}},
+		{"prefix val1,,   val2", "prefix", []string{"val1", "val2"}},
+		{"prefix val1  ,,,   val2", "prefix", []string{"val1", "val2"}},
+		{"prefix val1 val2 val3 val4", "prefix", []string{"val1", "val2", "val3", "val4"}},
+		{"prefix val1 val2", "NOMATCH", nil},
+		{"prefix", "prefix", []string{}},
+		{"uselessvalues prefix val1 val2", "prefix", []string{"val1", "val2"}},
+		{`prefix "val1, from here to there" val2`, "prefix", []string{"val1, from here to there", "val2"}},
+		{`prefix (val1, from here to there) val2`, "prefix", []string{"(val1, from here to there)", "val2"}},
+		{`prefix "val1 val2`, "prefix", []string{`"val1`, "val2"}},
+		{"prefix val1() val2", "prefix", []string{"val1()", "val2"}},
+		{"prefix val1 ()val2", "prefix", []string{"val1", "()val2"}},
+		{"prefix val1 () val2", "prefix", []string{"val1", "()", "val2"}},
+		{"prefix s1=val1 s2=val2", "prefix", []string{"s1=val1", "s2=val2"}},
+		{"prefix s1= val1 s2=val2", "prefix", []string{"s1=", "val1", "s2=val2"}},
+	}
+
+	for _, c := range cases {
+		r := GetSlicedDataArray(c.line, c.prefix)
+		if debug {
+			fmt.Println(r)
+		}
+		if !reflect.DeepEqual(c.a, r) {
+			t.Errorf("GetSlicedDataArray(%v,%v)=%v, want %v", c.line, c.prefix, r, c.a)
+		}
+	}
+}
+
+func TestGetParsedComplexDataMap(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -100,6 +140,8 @@ func TestParseComplexData(t *testing.T) {
 	}{
 		{"prefix key1=val1 val2 key3=val3", "prefix", "_ key2 _", map[string]string{"key1": "val1", "key2": "val2", "key3": "val3"}},
 		{`prefix key1="val1" val2 key3=val3`, "prefix", "_ key2 _", map[string]string{"key1": "val1", "key2": "val2", "key3": "val3"}},
+		{`prefix key1=val1,, val2 key3=val3`, "prefix", "_ key2 _", map[string]string{"key1": "val1", "key2": "val2", "key3": "val3"}},
+		{`prefix key1=val1  ,,, val2 key3=val3`, "prefix", "_ key2 _", map[string]string{"key1": "val1", "key2": "val2", "key3": "val3"}},
 		{"prefix key1=(val1) val2 key3=val3", "prefix", "_ key2 _", map[string]string{"key1": "(val1)", "key2": "val2", "key3": "val3"}},
 		{"prefix key1:val1 val2 key3:val3", "prefix", "_ key2 _", map[string]string{"key1": "val1", "key2": "val2", "key3": "val3"}},
 		{"prefix key1:val1 val2 key3:val3, key4:val4", "prefix", "_ key2 _", map[string]string{"key1": "val1", "key2": "val2", "key3": "val3", "key4": "val4"}},
@@ -116,12 +158,42 @@ func TestParseComplexData(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := ParseComplexData(c.line, c.prefix, strings.Fields(c.fields))
+		r := GetParsedComplexDataMap(c.line, c.prefix, strings.Fields(c.fields))
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.m, r) {
-			t.Errorf("ParseComplexData(%v, %v, %v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
+			t.Errorf("GetParsedComplexDataMap(%v, %v, %v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
+		}
+	}
+}
+
+func TestGetSlicedComplexDataArray(t *testing.T) {
+	cases := []struct {
+		line   string
+		prefix string
+		a      []string
+	}{
+		{"prefix key1=val1 val2 key3=val3", "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{"prefix key1=val1, val2 key3=val3", "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{"prefix key1=val1,, val2 key3=val3", "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{"prefix key1=val1  ,,,  val2 key3=val3", "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{"prefix key1:val1 val2 key3:val3", "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{"prefix key1 =val1 val2 key3=val3", "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{`prefix key1="val1" val2 key3=val3`, "prefix", []string{"key1=val1", "val2", "key3=val3"}},
+		{`prefix key1="val1,val11, val12", val2`, "prefix", []string{"key1=val1,val11, val12", "val2"}},
+		{"prefix key1=(val1) val2 key3=val3", "prefix", []string{"key1=(val1)", "val2", "key3=val3"}},
+		{"prefix val1 val2", "NOMATCH", nil},
+		{"MMUPageSize:           4 kB", "", []string{"MMUPageSize=4", "kB"}},
+	}
+
+	for _, c := range cases {
+		r := GetSlicedComplexDataArray(c.line, c.prefix)
+		if debug {
+			fmt.Println(r)
+		}
+		if !reflect.DeepEqual(c.a, r) {
+			t.Errorf("GetSlicedComplexDataArray(%v, %v)=%v, want %v", c.line, c.prefix, r, c.a)
 		}
 	}
 }
