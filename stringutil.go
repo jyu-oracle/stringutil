@@ -166,7 +166,7 @@ func GetSlicedDataArray(line string, prefix string) []string {
 	return retArray
 }
 
-// GetParsedComplexDataMap returns complex data (key-value pair or valueonly data) parsed from the input string as map format.
+// GetParsedComplexDataMap returns complex data (key-value pair or valueonly data) parsed from the input string as a map.
 // 'values' are directly parsed from the input string, and the 'keys' are either from input string or fields param.
 // For the case of key-value pair, the default 'key' is directly from the input string.
 // For the case of valueonly data, the default 'key' is "# + index" string.
