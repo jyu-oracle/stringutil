@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGetParsedKeyValueMap(t *testing.T) {
+func TestExtractKeyValuePairs(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -45,17 +45,17 @@ func TestGetParsedKeyValueMap(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := GetParsedKeyValueMap(c.line, c.prefix)
+		r := ExtractKeyValuePairs(c.line, c.prefix)
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.m, r) {
-			t.Errorf("GetParsedKeyValueMap(%v,%v)=%v, want %v", c.line, c.prefix, r, c.m)
+			t.Errorf("ExtractkeyValuePairs(%v,%v)=%v, want %v", c.line, c.prefix, r, c.m)
 		}
 	}
 }
 
-func TestGetSlicedDataMap(t *testing.T) {
+func TestExtractValuesWithFields(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -86,17 +86,17 @@ func TestGetSlicedDataMap(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := GetSlicedDataMap(c.line, c.prefix, strings.Fields(c.fields))
+		r := ExtractValuesWithFields(c.line, c.prefix, strings.Fields(c.fields))
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.m, r) {
-			t.Errorf("GetSlicedDataMap(%v,%v,%v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
+			t.Errorf("ExtractValuesWithFields(%v,%v,%v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
 		}
 	}
 }
 
-func TestGetSlicedDataArray(t *testing.T) {
+func TestSplit(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -121,17 +121,17 @@ func TestGetSlicedDataArray(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := GetSlicedDataArray(c.line, c.prefix)
+		r := Split(c.line, c.prefix)
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.a, r) {
-			t.Errorf("GetSlicedDataArray(%v,%v)=%v, want %v", c.line, c.prefix, r, c.a)
+			t.Errorf("Split(%v,%v)=%v, want %v", c.line, c.prefix, r, c.a)
 		}
 	}
 }
 
-func TestGetParsedComplexDataMap(t *testing.T) {
+func TestExtractKeyValuePairsWithFields(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -158,17 +158,17 @@ func TestGetParsedComplexDataMap(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := GetParsedComplexDataMap(c.line, c.prefix, strings.Fields(c.fields))
+		r := ExtractKeyValuePairsWithFields(c.line, c.prefix, strings.Fields(c.fields))
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.m, r) {
-			t.Errorf("GetParsedComplexDataMap(%v, %v, %v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
+			t.Errorf("ExtractKeyValuePairsWithFields(%v, %v, %v)=%v, want %v", c.line, c.prefix, c.fields, r, c.m)
 		}
 	}
 }
 
-func TestGetSlicedComplexDataArray(t *testing.T) {
+func TestSplitPairsAndValues(t *testing.T) {
 	cases := []struct {
 		line   string
 		prefix string
@@ -188,12 +188,12 @@ func TestGetSlicedComplexDataArray(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		r := GetSlicedComplexDataArray(c.line, c.prefix)
+		r := SplitPairsAndValues(c.line, c.prefix)
 		if debug {
 			fmt.Println(r)
 		}
 		if !reflect.DeepEqual(c.a, r) {
-			t.Errorf("GetSlicedComplexDataArray(%v, %v)=%v, want %v", c.line, c.prefix, r, c.a)
+			t.Errorf("SplitPairsAndValues(%v, %v)=%v, want %v", c.line, c.prefix, r, c.a)
 		}
 	}
 }
